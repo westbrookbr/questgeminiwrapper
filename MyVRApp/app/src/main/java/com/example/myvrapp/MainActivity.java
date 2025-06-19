@@ -51,10 +51,11 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
     // Log API Key status
     if (GEMINI_API_KEY == null || GEMINI_API_KEY.equals("YOUR_API_KEY_HERE") || GEMINI_API_KEY.isEmpty() || GEMINI_API_KEY.equals("DEFAULT_NO_API_KEY")) { // Added DEFAULT_NO_API_KEY
         android.util.Log.e(TAG, "API Key not loaded or placeholder detected. Please ensure GEMINI_API_KEY is set in gradle.properties.");
-        textView.setText("ERROR: Gemini API Key not configured.");
+        updateUiForState("ERROR", "ERROR: Gemini API Key not configured.");
         // Potentially disable API calling features or inform user
     } else {
         android.util.Log.i(TAG, "Gemini API Key loaded successfully.");
+        updateUiForState("IDLE", "Press the button and speak to Gemini");
         // Avoid logging the actual key: android.util.Log.d(TAG, "API Key: " + GEMINI_API_KEY); // Potentially sensitive
     }
 
@@ -73,13 +74,25 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
 
         // Initialize TextToSpeech
         textToSpeech = new TextToSpeech(this, status -> {
+            // General note: True spatial audio for TTS in VR would typically require
+            // integration with a VR SDK's audio engine, not provided by standard Android TTS.
             if (status == TextToSpeech.SUCCESS) {
-                int result = textToSpeech.setLanguage(Locale.US); // Or Locale.getDefault()
+                // Using Locale.US as an example. Locale.getDefault() could also be used.
+                int result = textToSpeech.setLanguage(Locale.US);
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    textView.setText("TTS: Language not supported or data missing.");
+                    android.util.Log.e(TAG, "TTS: Language (Locale.US) data missing or not supported.");
+                    updateUiForState("ERROR", "TTS Error: Language data missing or not supported.");
+                } else {
+                    // Log the actual language being used by TTS.
+                    // Note: getVoice().getLocale() might be more accurate if a specific voice was set.
+                    // Here, we log the locale we attempted to set.
+                    android.util.Log.i(TAG, "TTS initialized successfully. Language set to: " + Locale.US.toString());
+                    // Default speech rate, pitch, and voice are used. These can be customized
+                    // using textToSpeech.setSpeechRate(), textToSpeech.setPitch(), etc.
                 }
             } else {
-                textView.setText("TTS: Initialization failed.");
+                android.util.Log.e(TAG, "TTS Initialization failed. Status: " + status);
+                updateUiForState("ERROR", "TTS Error: Initialization failed.");
             }
         });
 
@@ -87,7 +100,7 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
         speechRecognizer.setRecognitionListener(new RecognitionListener() {
             @Override
-            public void onReadyForSpeech(Bundle params) { textView.setText("Listening..."); }
+            public void onReadyForSpeech(Bundle params) { updateUiForState("LISTENING", "Listening..."); }
             @Override
             public void onBeginningOfSpeech() { }
             @Override
@@ -99,7 +112,7 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
             @Override
             public void onError(int error) {
                 String errorMessage = getErrorText(error);
-                textView.setText("Speech Rec Error: " + errorMessage);
+                updateUiForState("ERROR", "Speech Rec Error: " + errorMessage);
                 speak("Speech recognition error. Please try again.");
             }
             @Override
@@ -107,10 +120,10 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null && !matches.isEmpty()) {
                     String recognizedText = matches.get(0);
-                    textView.setText("You said: " + recognizedText);
+                    // textView.setText("You said: " + recognizedText); // Original line, will be handled by callGeminiAPI
                     callGeminiAPI(recognizedText); // Send recognized text to Gemini API
                 } else {
-                    textView.setText("No speech recognized.");
+                    updateUiForState("IDLE", "No speech recognized.");
                     speak("I didn't catch that. Can you please repeat?");
                 }
             }
@@ -135,6 +148,20 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
         });
     }
 
+  /**
+   * Updates the main TextView to reflect the current state of the application.
+   * This method ensures that UI updates are performed on the main thread.
+   *
+   * @param state A string representing the current state (e.g., "LISTENING", "PROCESSING", "IDLE", "ERROR").
+   *              This is primarily used for logging and potential future UI changes based on state.
+   * @param message The message to display to the user in the TextView.
+   */
+  private void updateUiForState(String state, String message) {
+    android.util.Log.d(TAG, "Updating UI for state: " + state + ", message: " + message);
+    runOnUiThread(() -> textView.setText(message));
+    // TODO: Add more UI changes based on state if needed, e.g., button text, colors
+  }
+
     // Method to call Gemini API
     private void callGeminiAPI(String prompt) {
         android.util.Log.i(TAG, "Attempting to call Gemini API with prompt: '" + prompt + "'");
@@ -144,7 +171,7 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
             return;
         }
 
-        textView.setText("Thinking...");
+        updateUiForState("PROCESSING", "Thinking...");
         Content content = new Content.Builder().addText(prompt).build();
         ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
 
@@ -154,11 +181,11 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
                 String geminiResponseText = result.getText(); // Use this variable
                 android.util.Log.i(TAG, "Gemini API call successful. Prompt: '" + prompt + "'. Response: '" + geminiResponseText + "'");
                 if (geminiResponseText != null && !geminiResponseText.isEmpty()) {
-                    runOnUiThread(() -> textView.setText("Gemini: " + geminiResponseText));
+                    updateUiForState("IDLE", "Gemini: " + geminiResponseText);
                     speak(geminiResponseText);
                 } else {
                     android.util.Log.w(TAG, "Gemini API call successful but response was null or empty.");
-                    runOnUiThread(() -> textView.setText("Gemini: No response."));
+                    updateUiForState("IDLE", "Gemini: No response.");
                     speak("I'm sorry, I couldn't get a response from Gemini.");
                 }
             }
@@ -166,10 +193,8 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
             @Override
             public void onFailure(Throwable t) {
                 android.util.Log.e(TAG, "Gemini API call failed. Prompt: '" + prompt + "'. Error: " + t.getMessage(), t);
-                runOnUiThread(() -> {
-                    textView.setText("Gemini Error: " + t.getMessage());
-                    speak("There was an error communicating with Gemini. Please try again.");
-                });
+                updateUiForState("ERROR", "Gemini Error: " + t.getMessage());
+                speak("There was an error communicating with Gemini. Please try again.");
                 // t.printStackTrace(); // Logcat will show this via android.util.Log.e
             }
         }, executorService);
@@ -177,11 +202,14 @@ private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
 
     // Method to speak text using TextToSpeech
     private void speak(String text) {
-        if (textToSpeech != null) {
-            // Stop current speech before starting new one for immediate feedback
+        if (textToSpeech != null && text != null && !text.isEmpty()) {
+            // Stop current speech before starting new one for immediate feedback.
+            // This is useful if a new TTS request comes in while a previous one is still speaking.
             if (textToSpeech.isSpeaking()) {
                 textToSpeech.stop();
             }
+            // QUEUE_FLUSH drops all previous items in the queue and plays the new one immediately.
+            // QUEUE_ADD would add it to the end of the queue.
             textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
         }
     }

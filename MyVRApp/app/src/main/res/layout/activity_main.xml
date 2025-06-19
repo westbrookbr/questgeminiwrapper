@@ -3,27 +3,61 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    android:background="#1A1A1A"> <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    android:background="#1A1A1A">
+
+    <!--
+        ScrollView was added to make the Gemini responses and status messages scrollable
+        if they exceed the defined height. This is important for longer text outputs.
+        The layout_centerInParent="true" helps keep it centered on the screen,
+        which is often desirable in VR applications.
+        The fixed height (android:layout_height="300dp") provides a defined area for text,
+        preventing overly long responses from pushing the button off-screen or taking up
+        too much vertical space, which can be uncomfortable in VR.
+        Margins provide spacing from screen edges, and padding provides internal spacing
+        before the TextView content. The background and alpha create a semi-transparent
+        panel for the text.
+    -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
         android:layout_centerInParent="true"
-        android:text="Press the button and speak to Gemini"
-        android:textSize="24sp"
-        android:textAlignment="center"
-        android:textColor="@android:color/white"
-        android:padding="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp"
+        android:padding="10dp"
         android:background="#333333"
-        android:layout_margin="20dp"
-        android:alpha="0.9" />
+        android:alpha="0.9">
+
+        <!--
+            TextView is the main display area for text.
+            It shows initial instructions, status updates (Listening, Thinking, Errors),
+            and the final responses from the Gemini API.
+            layout_width="match_parent" makes it use the full width of the ScrollView.
+            layout_height="wrap_content" allows it to expand vertically to fit the content,
+            enabling the ScrollView to function when text is long.
+            Text alignment is centered, which can be suitable for VR interfaces,
+            though 'start' alignment might be preferred for very long blocks of text.
+        -->
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Press the button and speak to Gemini"
+            android:textSize="24sp"
+            android:textAlignment="center"
+            android:textColor="@android:color/white"
+            android:padding="10dp" />
+    </ScrollView>
 
     <Button
         android:id="@+id/speakButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/textView"
+        android:layout_below="@id/scrollView"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="20dp"
         android:text="Speak to Gemini"
         android:textSize="18sp"
         android:paddingLeft="30dp"
@@ -33,4 +67,5 @@
         android:backgroundTint="#6200EE"
         android:textColor="@android:color/white"
         android:elevation="8dp"
-        android:stateListAnimator="@null" /> </RelativeLayout>
+        android:stateListAnimator="@null" />
+</RelativeLayout>
