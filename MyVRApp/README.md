@@ -110,6 +110,7 @@ This script will:
 2.  Verify the APK (existence, non-zero size, valid signature).
 3.  Run all instrumentation tests.
 4.  Report overall success or indicate the point of failure.
+5.  After successful completion, prompt for and apply a Git version tag (see "Automated Version Tagging" under "Automated Release Pipeline").
 The release APK will be located at `MyVRApp/app/build/outputs/apk/release/app-release.apk`.
 
 ### 3. Manual Gradle Commands (Alternative)
@@ -149,6 +150,71 @@ The `build_and_verify.sh` script provides clear messages for each stage:
 
 *   A final **"MyVRApp Release Build, Verification & Automated Tests ALL SUCCESSFUL!"** message indicates that the APK is built, verified, and core functionalities have passed automated tests.
 *   If any stage fails, the script will print an error message indicating where the failure occurred and exit with a non-zero status code.
+
+## Automated Release Pipeline
+
+To streamline the release process, several scripts have been introduced to automate key tasks such as release notes generation, version tagging, and deployment.
+
+### Release Notes Generation (`generate_release_notes.sh`)
+
+This script automates the creation of release notes based on Git commit history.
+
+*   **Purpose:** Generates `RELEASE_NOTES.md` by collecting commit messages since the last Git tag (or from the first commit if no tags exist). Each commit is formatted as a Markdown bullet point.
+*   **Usage:**
+    ```bash
+    cd MyVRApp
+    ./generate_release_notes.sh
+    ```
+*   **Output:** The release notes are saved to `MyVRApp/RELEASE_NOTES.md`. If no new commits are found, it will indicate that there are no changes since the last release.
+
+### Automated Version Tagging (in `build_and_verify.sh`)
+
+The main build script, `build_and_verify.sh`, now incorporates an automated Git tagging step.
+
+*   **Process:** After a successful build and all automated tests pass, the script will prompt you to enter a version tag (e.g., `v1.0.0`, `v1.0.1-alpha`).
+*   **Action:** If a tag is provided, the script will:
+    1.  Create a Git tag locally (`git tag <your_tag>`).
+    2.  Push the tag to the remote repository (`git push origin <your_tag>`).
+*   **Skipping:** If you do not want to create a tag, simply press Enter without typing a tag name. The script will then skip the tagging process.
+*   **Error Handling:** If tagging or pushing fails, an error message will be displayed, but it will not cause the overall `build_and_verify.sh` script to report a failure if the build and tests themselves were successful.
+
+### Deployment Script (`deploy_alpha.sh`)
+
+The `deploy_alpha.sh` script is designed to automate the deployment of the generated APK to various distribution targets.
+
+*   **Purpose:** Provides a unified way to deploy the application APK for testing or alpha releases.
+*   **Basic Usage:**
+    ```bash
+    cd MyVRApp
+    ./deploy_alpha.sh <path_to_apk> <target_type> [options]
+    ```
+*   **Logging:** The script includes timestamped logging for all its operations.
+
+#### Supported Targets:
+
+1.  **Local Deployment:**
+    *   **Command:** `./deploy_alpha.sh app/build/outputs/apk/release/app-release.apk local /path/to/your/share_directory`
+    *   **Action:** Copies the APK file to the specified local directory. Useful for direct sharing or manual uploads.
+
+2.  **Meta Quest Deployment (Placeholder):**
+    *   **Command:** `./deploy_alpha.sh <path_to_apk> meta_quest <your_app_id>`
+    *   **Action:** Prepares for uploading the APK to the Meta Quest Store (Alpha channel by default) using the `ovr-platform-util`.
+    *   **Required Environment Variables:**
+        *   `OVR_APP_SECRET`: Your Meta Quest application secret.
+        *   `OVR_ACCESS_TOKEN`: Your Meta Quest user access token.
+    *   **Optional Environment Variable:**
+        *   `OVR_PLATFORM_UTIL_PATH`: Set this if `ovr-platform-util` is not in your system's `PATH`.
+    *   **Current Status:** The script currently performs a **dry run**. It will log the `ovr-platform-util` command that would be executed but will **not** perform the actual upload. This allows for command verification without live credentials during initial setup.
+
+3.  **Firebase App Distribution (Placeholder):**
+    *   **Command:** `./deploy_alpha.sh <path_to_apk> firebase`
+    *   **Action:** Prepares for distributing the APK via Firebase App Distribution.
+    *   **Required Environment Variables:**
+        *   `FIREBASE_APP_ID`: Your Firebase Application ID.
+        *   `FIREBASE_TOKEN`: Your Firebase CLI token (especially useful for CI environments).
+    *   **Optional Environment Variable:**
+        *   `FIREBASE_CLI_PATH`: Set this if the `firebase` CLI tool is not in your system's `PATH`.
+    *   **Current Status:** The script currently performs a **dry run**. It will log the `firebase` command that would be executed but will **not** perform the actual distribution. This allows for command verification.
 
 ## Automated Technical Tests
 
