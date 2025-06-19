@@ -2,17 +2,19 @@
 
 ## Overview
 
-This project is a VR-ready Android application designed to integrate Google's Gemini AI. It provides a foundational framework for sending requests to the Gemini API and displaying responses within a VR environment. The project emphasizes secure API key management, automated build and verification processes, enhanced error handling, and robust deployment scripts.
+This project is a VR-ready Android application designed to integrate Google's Gemini AI. It provides a foundational framework for sending requests to the Gemini API and displaying responses within a VR environment. The project emphasizes secure API key management, automated build and verification processes, enhanced error handling, robust deployment scripts, static code analysis, and performance monitoring.
 
 ## Features
 
 *   **Command-line driven APK generation:** Scripts for building debug and release APKs.
 *   **Secure API Key Injection:** Prioritized sourcing of `GEMINI_API_KEY`.
+*   **Static Code Analysis:** Integrated `ktlint` for Kotlin code styling and consistency, checked during the build process.
 *   **Automated APK Verification:** The `build_and_verify.sh` script checks for APK existence, size, and valid signing.
 *   **Automated Technical Validation:** Instrumentation tests validate core functionalities like Speech Recognizer, TTS, Gemini API client, and UI elements.
 *   **Scrollable Text Display:** Main layout includes a ScrollView for long API responses.
 *   **Enhanced Error Handling:** Scripts now use a common error handler (`error_handler.sh`) for consistent, timestamped error reporting and immediate exit on failure.
 *   **Automated Release Pipeline:** Includes scripts for release notes generation, strict version tagging, and deployment to Meta Quest and Firebase App Distribution.
+*   **Performance Analysis Script:** `analyze_performance.sh` for collecting and viewing gfxinfo and meminfo from a connected device.
 
 ## Prerequisites
 
@@ -23,6 +25,7 @@ This project is a VR-ready Android application designed to integrate Google's Ge
 *   **`git`:** For version control and tagging features.
 *   **(For Meta Quest Deployment) `ovr-platform-util`:** Meta's command-line tool for uploading builds.
 *   **(For Firebase Deployment) `firebase-tools`:** Firebase CLI for app distribution.
+*   **`adb` (Android Debug Bridge):** Required for performance analysis. Usually included with Android SDK Platform Tools.
 
 ## Setup & Configuration
 
@@ -88,23 +91,105 @@ cd MyVRApp
 This script will:
 1.  Build the release APK.
 2.  Verify the APK.
-3.  Run instrumentation tests.
-4.  Report success or failure (exiting on error).
-5.  After success, prompt for and apply a Git version tag (see "Automated Version Tagging").
+3.  Run `ktlint` static code analysis (see "Static Code Analysis with Ktlint" section).
+4.  Run instrumentation tests.
+5.  Report success or failure (exiting on error).
+6.  After success, prompt for and apply a Git version tag (see "Automated Version Tagging").
 Output: `MyVRApp/app/build/outputs/apk/release/app-release.apk`.
 
 ### 3. Manual Gradle Commands
 
 (Ensure `GEMINI_API_KEY` and signing properties are set appropriately.)
-*   **Debug APK:** `./gradlew assembleDebug`
-*   **Release APK:** `./gradlew assembleRelease`
-*   **Instrumentation Tests:** `./gradlew connectedAndroidTest` (requires connected device/emulator)
+*   **Debug APK:** `./gradlew assembleDebug` (or `./gradlew :app:assembleDebug`)
+*   **Release APK:** `./gradlew assembleRelease` (or `./gradlew :app:assembleRelease`)
+*   **Instrumentation Tests:** `./gradlew connectedAndroidTest` (or `./gradlew :app:connectedAndroidTest` if run from project root)
+*   **Ktlint Check:** `./gradlew :app:ktlintCheck`
+*   **Ktlint Format:** `./gradlew :app:ktlintFormat`
 
 ## Interpreting Script Output
 
 Scripts provide clear messages. With the new error handling:
 *   Success messages indicate completion of stages.
 *   Error messages will be prefixed with `[YYYY-MM-DD HH:MM:SS] ERROR in <script_name> at line <line_number>: <error_message>` and the script will halt.
+
+## Static Code Analysis with Ktlint
+
+This project uses `ktlint` to enforce Kotlin coding standards and maintain code quality. `ktlint` is integrated into the build process.
+
+### Configuration
+
+*   `ktlint` is configured in `MyVRApp/app/build.gradle` using the `org.jlleitschuh.gradle.ktlint` plugin.
+*   Specific `ktlint` tool version and plugin settings are defined there.
+*   You can further customize rules by creating or modifying an `.editorconfig` file in the `MyVRApp/app/` directory. Refer to the `ktlint` documentation for `.editorconfig` options.
+
+### Running Ktlint Manually
+
+*   **Check for violations:**
+    Navigate to the `MyVRApp` directory (or the project root) and run:
+    ```bash
+    ./gradlew :app:ktlintCheck
+    ```
+    This task will report any linting errors found in the `:app` module.
+
+*   **Automatically format code:**
+    To automatically fix many of the reported style violations, run:
+    ```bash
+    ./gradlew :app:ktlintFormat
+    ```
+    After running `ktlintFormat`, it's good practice to run `ktlintCheck` again to ensure all auto-fixable issues are resolved and to see if any manual changes are still required. Review changes before committing.
+
+### Integration with `build_and_verify.sh`
+
+The `build_and_verify.sh` script automatically runs `./gradlew :app:ktlintCheck` as part of its verification steps. If `ktlintCheck` reports any errors, the script will halt and report the failure, preventing the build from proceeding if code style standards are not met.
+
+## Performance Analysis (`analyze_performance.sh`)
+
+The `MyVRApp/analyze_performance.sh` script uses `adb` to collect and display graphics (gfxinfo) and memory (meminfo) performance data for your application from a connected Android device or emulator.
+
+### 1. Setting up ADB and Device for Debugging
+
+*   **Install ADB:** Ensure `adb` (Android Debug Bridge) is installed and in your system's PATH. It's part of the Android SDK Platform Tools.
+*   **Enable Developer Options on Device:**
+    1.  Open **Settings** on your Android device.
+    2.  Go to **About phone**.
+    3.  Tap **Build number** seven times until "You are now a developer!" appears.
+*   **Enable USB Debugging on Device:**
+    1.  Go back to **Settings**.
+    2.  Go to **System** -> **Developer options** (this menu is now visible).
+    3.  Enable **USB debugging**.
+*   **Connect Device:** Connect your device to your computer via USB.
+*   **Authorize Connection:** On your device, a prompt will ask to "Allow USB debugging?". Check "Always allow from this computer" and tap **OK**.
+*   **Verify Connection:** Open a terminal and run `adb devices`. You should see your device listed with "device" next to its name (e.g., `emulator-5554 device` or `XYZ123ABC device`). If it says "unauthorized," re-check the authorization prompt on your device.
+
+### 2. Running the Script
+
+1.  **Navigate to the script directory:**
+    ```bash
+    cd MyVRApp
+    ```
+2.  **Make the script executable (if needed):**
+    The script should have execute permissions. If you cloned the repository or downloaded the file and it's not executable, run:
+    ```bash
+    chmod +x analyze_performance.sh
+    ```
+3.  **Run the script with your app's package name:**
+    Replace `com.example.myvrapp` with your actual application package name (usually found in `app/build.gradle` as `applicationId`).
+    ```bash
+    ./analyze_performance.sh com.example.myvrapp
+    ```
+    For example, if your `applicationId` in `MyVRApp/app/build.gradle` is `com.example.geminivrapp`, you would run:
+    ```bash
+    ./analyze_performance.sh com.example.geminivrapp
+    ```
+
+### 3. Interpreting Output
+
+The script will print:
+*   **Graphics Metrics:** Total frames rendered, janky frames, and frame time percentiles (90th, 95th, 99th). Lower frame times and fewer janky frames are better. Gfxinfo data is often more representative when the app is actively rendering or animating.
+*   **Memory Metrics (PSS in KB):** Total PSS (Proportional Set Size), Java Heap, Native Heap, and other memory categories. PSS is a good measure of an app's RAM footprint.
+*   **Object Counts:** Number of Views and Activities.
+
+If errors occur (e.g., device not connected, package not found), the script will output error messages.
 
 ## Automated Release Pipeline
 
@@ -119,7 +204,7 @@ If `MyVRApp/RELEASE_NOTES.md` exists, it will be used by `deploy_alpha.sh` for F
 
 ### Automated Version Tagging (in `build_and_verify.sh`)
 
-After a successful build and tests, `build_and_verify.sh` prompts for a Git version tag.
+After a successful build, ktlint check, and tests, `build_and_verify.sh` prompts for a Git version tag.
 *   **Format Requirement:** Tags must follow strict semantic versioning: `vX.Y.Z` (e.g., `v1.0.0`, `v1.2.3`). Invalid formats will cause an error and halt the script.
 *   **Pre-checks:** The script checks if the tag already exists locally or on the remote `origin`. If it exists, an error is reported, and the script halts.
 *   **Process:**
@@ -200,29 +285,32 @@ Features timestamped logging and robust error handling.
 
 Located in `MyVRApp/app/src/androidTest/java/com/example/myvrapp/CoreFunctionalityTest.kt`.
 Tests validate: Speech Recognizer, TextToSpeech engine, Gemini API client, and core UI elements.
-Run via `build_and_verify.sh` or manually:
+Run via `build_and_verify.sh` or manually (after navigating to `MyVRApp` directory):
 ```bash
-cd MyVRApp
 ./gradlew connectedAndroidTest
 ```
+(Or `./gradlew :app:connectedAndroidTest` from project root).
 
 ## Project Structure
-(Project structure diagram remains largely the same, ensure `error_handler.sh`, `generate_release_notes.sh`, `deploy_alpha.sh` are listed if not already)
+(Project structure diagram remains largely the same, ensure `error_handler.sh`, `generate_release_notes.sh`, `deploy_alpha.sh`, `analyze_performance.sh` are listed if not already)
 ```
 MyVRApp/
 ├── app/
-│   ├── ... (main app content)
-├── build.gradle
+│   ├── build.gradle             # App-specific gradle config (includes ktlint)
+│   ├── src/
+│   └── .editorconfig            # (Optional) ktlint rule customization
+├── build.gradle                 # Project-level gradle config
 ├── gradle.properties
 ├── gradlew
 ├── gradlew.bat
 ├── settings.gradle
-├── error_handler.sh         # Common error handling script
+├── error_handler.sh             # Common error handling script
 ├── build_with_api_key.sh
-├── build_and_verify.sh
+├── build_and_verify.sh          # Includes ktlintCheck
 ├── generate_release_notes.sh
 ├── deploy_alpha.sh
-├── RELEASE_NOTES.md         # Generated release notes
+├── analyze_performance.sh       # Performance analysis script
+├── RELEASE_NOTES.md             # Generated release notes
 └── README.md
 ```
 
@@ -239,11 +327,22 @@ MyVRApp/
 *   **Release build fails (signing issues):**
     Verify signing properties in `MyVRApp/gradle.properties` and keystore file path/access.
 
+*   **`ktlintCheck` fails:**
+    *   Run `./gradlew :app:ktlintFormat` from the `MyVRApp` directory (or project root) to automatically fix most style issues.
+    *   Review the output of `ktlintCheck` for any issues that need manual correction.
+    *   Consider customizing rules via an `.editorconfig` file in `MyVRApp/app/` if needed.
+
 *   **`apksigner` not found:**
     Ensure Android SDK `build-tools` directory is in PATH, or `ANDROID_HOME`/`ANDROID_SDK_ROOT` is set.
 
 *   **Instrumentation tests fail:**
     Check for connected device/emulator (`adb devices`). Review Logcat for detailed errors. `testUIElements_Existence` depends on `MainActivity.kt` and `activity_main.xml` configuration.
+
+*   **Performance script (`analyze_performance.sh`) issues:**
+    *   **`adb: command not found`:** Ensure Android SDK Platform Tools are in your PATH.
+    *   **Device not found / unauthorized:** Run `adb devices`. Ensure your device is connected, USB debugging is enabled, and the computer is authorized. See "Setting up ADB and Device for Debugging" section.
+    *   **Script not executable:** Run `chmod +x MyVRApp/analyze_performance.sh`.
+    *   **Package not found:** Double-check the package name argument. It must match your app's `applicationId`.
 
 *   **Deployment Failures (Meta Quest or Firebase):**
     *   **Authentication:** Double-check that `OVR_APP_ID`, `OVR_APP_SECRET`, `OVR_ACCESS_TOKEN` (for Meta Quest) or `FIREBASE_APP_ID`, `FIREBASE_TOKEN` (for Firebase CI) are correctly set as environment variables and are valid.

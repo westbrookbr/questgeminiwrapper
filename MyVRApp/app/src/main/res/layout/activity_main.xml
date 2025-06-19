@@ -6,6 +6,13 @@
     android:background="#1A1A1A">
 
     <!--
+        VR Performance: Simplicity and Overdraw
+        This RelativeLayout is relatively simple. In VR, complex layouts with many overlapping elements
+        (overdraw) can significantly impact performance. Each pixel drawn multiple times costs rendering time.
+        Tools like "Debug GPU Overdraw" in Android Developer Options can help visualize this.
+        Keeping layouts flatter and minimizing overlapping transparent views is crucial.
+        Using a single opaque background color (#1A1A1A here) is good as it avoids transparency at the root.
+
         ScrollView was added to make the Gemini responses and status messages scrollable
         if they exceed the defined height. This is important for longer text outputs.
         The layout_centerInParent="true" helps keep it centered on the screen,
@@ -16,6 +23,16 @@
         Margins provide spacing from screen edges, and padding provides internal spacing
         before the TextView content. The background and alpha create a semi-transparent
         panel for the text.
+
+        VR Performance: Overdraw in ScrollView/TextView
+        The ScrollView itself has a background (#333333) and the TextView within it also has its own.
+        If the TextView's content fully covers the ScrollView's background, this is a minor overdraw.
+        For very high-performance scenarios, one might make the inner TextView's background transparent
+        if the ScrollView provides the desired opaque background. However, for readability and distinct
+        UI elements as used here, this is generally acceptable. The alpha on ScrollView (0.9) means
+        the RelativeLayout's background will be partially visible, which is an intentional visual effect
+        but technically contributes to overdraw if not managed carefully in more complex scenes.
+        Consider tools like Hierarchy Viewer or "Debug GPU Overdraw" for complex layouts.
     -->
     <ScrollView
         android:id="@+id/scrollView"
@@ -49,6 +66,12 @@
             android:textAlignment="center"
             android:textColor="@android:color/white"
             android:padding="10dp" />
+            <!--
+                VR Performance: TextViews
+                - Keep text rendering efficient. Avoid very complex Spannables if not needed.
+                - For frequently updating text, ensure updates are batched or managed to prevent excessive redraws.
+                  (More relevant to MainActivity.kt logic but layout structure supports this).
+            -->
     </ScrollView>
 
     <Button
@@ -68,4 +91,14 @@
         android:textColor="@android:color/white"
         android:elevation="8dp"
         android:stateListAnimator="@null" />
+        <!--
+            VR Performance: Buttons and Interactivity
+            - Simple buttons like this are generally fine.
+            - For custom interactive elements in VR (e.g., gaze-based or controller-based interactions),
+              ensure their hitboxes are appropriately sized and that visual feedback is immediate
+              without causing performance drops on the main thread.
+            - The elevation adds a shadow, which is a form of overdraw. In VR, simpler, flat UI elements
+              (or faked depth using shaders if 3D) can sometimes be more performant than relying heavily
+              on Android's elevation/shadow rendering for depth cues, especially if many elements use it.
+        -->
 </RelativeLayout>

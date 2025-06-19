@@ -1,6 +1,28 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id "org.jlleitschuh.gradle.ktlint" version "11.6.1" // Recommended to use a specific version
+}
+
+// Ktlint configuration
+// Refer to https://github.com/jlleitschuh/ktlint-gradle for more options
+// You can also create a .editorconfig file in the root of the module (MyVRApp/app/.editorconfig)
+// to customize ktlint rules.
+ktlint {
+    version = "0.49.1" // Specify the ktlint tool version, check for latest stable
+    debug = true
+    verbose = true
+    android = true // Set to true if formatting Android Kotlin code
+    outputToConsole = true
+    // outputColorName = "RED" // Example for customizing output color
+
+    // Example of rule sets, if needed (often defaults are fine)
+    // ruleSets = [ "standard" ]
+
+    filter {
+        exclude("**/generated/**") // Exclude generated sources
+        include("**/kotlin/**")
+    }
 }
 
 android {
