@@ -7,6 +7,12 @@ android {
     namespace 'com.example.myvrapp'
     compileSdk 34 // Or higher, e.g., 34
 
+    // Define GEMINI_API_KEY sourcing logic
+    // Priority: Env Var -> gradle.properties -> Hardcoded
+    def geminiApiKey = System.getenv("GEMINI_API_KEY") ?: project.properties.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+    // Ensure the key is properly quoted for string inclusion in generated BuildConfig
+    def quotedGeminiApiKey = "\"${geminiApiKey}\""
+
     defaultConfig {
         applicationId "com.example.myvrapp"
         minSdk 29 // Oculus Quest 2 requires API Level 29
@@ -15,7 +21,7 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField "String", "GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"" // Default placeholder
+        // buildConfigField "String", "GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"" // Default placeholder - will be handled by build types
     }
 
     signingConfigs {
@@ -32,10 +38,10 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
-            buildConfigField "String", "GEMINI_API_KEY", project.properties.get("GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"")
+            buildConfigField "String", "GEMINI_API_KEY", quotedGeminiApiKey
         }
         debug {
-            buildConfigField "String", "GEMINI_API_KEY", project.properties.get("GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"")
+            buildConfigField "String", "GEMINI_API_KEY", quotedGeminiApiKey
         }
     }
     compileOptions {
