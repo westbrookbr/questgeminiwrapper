@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.myvrapp'
+    compileSdk 34 // Or higher, e.g., 34
+
+    defaultConfig {
+        applicationId "com.example.myvrapp"
+        minSdk 29 // Oculus Quest 2 requires API Level 29
+        targetSdk 34 // Or higher, matching compileSdk
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    buildFeatures {
+        // No view binding or data binding for a "No Activity" project initially
+        // viewBinding true
+        // dataBinding true
+        // For VR, we might need to enable manifest merging for VR features if not handled by OVR plugins
+    }
+}
+
+dependencies {
+    // Standard Android dependencies
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1' // Even without activities, some utils might be useful
+    implementation 'com.google.android.material:material:1.11.0' // For potential future UI elements
+
+    // Test dependencies
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    // Gemini AI dependencies
+    implementation 'com.google.ai.client.generativeai:generativeai:0.2.0'
+    implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict'
+
+    // Oculus / VR specific dependencies would be added here later
+    // For example:
+    // implementation 'com.oculus.vrapi:vrapi:2.0.0' (Example, actual dependency may vary)
+    // implementation project(':ovrplatformloader') // If using Oculus Platform SDK
+}
