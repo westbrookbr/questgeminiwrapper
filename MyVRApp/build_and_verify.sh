@@ -73,10 +73,24 @@ echo "APK ready at: $APK_PATH"
 echo "----------------------------------------"
 
 echo ""
+echo "Starting Ktlint Static Code Analysis..."
+# Run ktlintCheck for the app module.
+# The task name might be :app:ktlintCheck if run from root, or just ktlintCheck if already in MyVRApp.
+# The current script seems to be run from MyVRApp directory.
+./gradlew :app:ktlintCheck
+KTLINT_STATUS=$?
+
+if [ $KTLINT_STATUS -ne 0 ]; then
+    handle_error "$0" "$LINENO" "Ktlint static code analysis FAILED with status: $KTLINT_STATUS. Run './gradlew :app:ktlintFormat' to try to fix issues."
+fi
+echo "Ktlint static code analysis PASSED."
+echo "----------------------------------------"
+
+echo ""
 echo "Starting Instrumentation Tests..."
 # Ensure gradlew is executable. If this script is in MyVRApp, ./gradlew should work.
 # For projects with multiple modules, you might need :app:connectedAndroidTest
-./gradlew connectedAndroidTest
+./gradlew connectedAndroidTest # This will run :app:connectedAndroidTest if MyVRApp is the root for this gradlew.
 TEST_STATUS=$?
 
 if [ $TEST_STATUS -ne 0 ]; then
