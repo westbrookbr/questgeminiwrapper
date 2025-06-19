@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source the error handler
+source MyVRApp/error_handler.sh || { echo "Failed to source error_handler.sh"; exit 1; }
+
 # Script to build the MyVRApp Android application with a Gemini API Key provided as an argument.
 #
 # Usage:
@@ -10,9 +13,7 @@
 API_KEY=$1
 
 if [ -z "$API_KEY" ]; then
-  echo "Error: No API key provided."
-  echo "Usage: ./build_with_api_key.sh YOUR_GEMINI_API_KEY"
-  exit 1
+  handle_error "$0" "$LINENO" "No API key provided. Usage: ./build_with_api_key.sh YOUR_GEMINI_API_KEY"
 fi
 
 echo "Building with GEMINI_API_KEY set..."
@@ -24,8 +25,15 @@ export GEMINI_API_KEY="$API_KEY"
 # Ensure you are in the MyVRApp directory when running this if the script is located elsewhere.
 # If the script is inside MyVRApp, ./gradlew will work directly.
 ./gradlew assembleDebug
+BUILD_STATUS=$?
 
-# Unset the environment variable after build (optional, good practice)
+if [ $BUILD_STATUS -ne 0 ]; then
+    # Unset the environment variable even if build fails
+    unset GEMINI_API_KEY
+    handle_error "$0" "$LINENO" "Gradle debug build failed with status: $BUILD_STATUS"
+fi
+
+# Unset the environment variable after successful build (optional, good practice)
 unset GEMINI_API_KEY
 
 echo "Build finished."

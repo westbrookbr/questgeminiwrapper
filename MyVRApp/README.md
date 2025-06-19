@@ -2,32 +2,27 @@
 
 ## Overview
 
-This project is a VR-ready Android application designed to integrate Google's Gemini AI. It provides a foundational framework for sending requests to the Gemini API and displaying responses within a VR environment. The project emphasizes secure API key management, automated build and verification processes, and core functionality testing.
+This project is a VR-ready Android application designed to integrate Google's Gemini AI. It provides a foundational framework for sending requests to the Gemini API and displaying responses within a VR environment. The project emphasizes secure API key management, automated build and verification processes, enhanced error handling, and robust deployment scripts.
 
 ## Features
 
 *   **Command-line driven APK generation:** Scripts for building debug and release APKs.
-*   **Secure API Key Injection:** Prioritized sourcing of `GEMINI_API_KEY`:
-    1.  Environment Variable (`GEMINI_API_KEY`)
-    2.  `gradle.properties` file (`GEMINI_API_KEY`)
-    3.  Hardcoded default (placeholder, not for production)
-*   **Automated APK Verification:** The `build_and_verify.sh` script checks for:
-    *   APK file existence.
-    *   Non-zero APK file size.
-    *   Valid APK signing (using `apksigner`).
-*   **Automated Technical Validation:** Instrumentation tests (`CoreFunctionalityTest.kt`) validate:
-    *   Speech Recognizer initialization.
-    *   Text-To-Speech (TTS) engine initialization and basic operation.
-    *   Gemini API Client initialization and a dummy API call.
-    *   Existence of core UI elements (TextView, ScrollView) within `MainActivity`.
-*   **Scrollable Text Display:** The main layout includes a ScrollView to accommodate potentially long responses from the Gemini API.
+*   **Secure API Key Injection:** Prioritized sourcing of `GEMINI_API_KEY`.
+*   **Automated APK Verification:** The `build_and_verify.sh` script checks for APK existence, size, and valid signing.
+*   **Automated Technical Validation:** Instrumentation tests validate core functionalities like Speech Recognizer, TTS, Gemini API client, and UI elements.
+*   **Scrollable Text Display:** Main layout includes a ScrollView for long API responses.
+*   **Enhanced Error Handling:** Scripts now use a common error handler (`error_handler.sh`) for consistent, timestamped error reporting and immediate exit on failure.
+*   **Automated Release Pipeline:** Includes scripts for release notes generation, strict version tagging, and deployment to Meta Quest and Firebase App Distribution.
 
 ## Prerequisites
 
-*   **Android SDK:** API Level 29 or higher (recommended for Oculus Quest 2 compatibility).
-*   **Java Development Kit (JDK):** Version 11 or 17 is recommended.
-*   **(Optional but recommended) Android Studio:** For development, debugging, and easier SDK management.
-*   **`apksigner` tool:** Required for APK signature verification. This tool is typically included with the Android SDK Build-Tools. Ensure the build-tools directory is in your system's PATH or that `$ANDROID_HOME`/`$ANDROID_SDK_ROOT` is set correctly.
+*   **Android SDK:** API Level 29 or higher.
+*   **Java Development Kit (JDK):** Version 11 or 17.
+*   **(Optional) Android Studio:** For development and SDK management.
+*   **`apksigner` tool:** For APK signature verification (part of Android SDK Build-Tools).
+*   **`git`:** For version control and tagging features.
+*   **(For Meta Quest Deployment) `ovr-platform-util`:** Meta's command-line tool for uploading builds.
+*   **(For Firebase Deployment) `firebase-tools`:** Firebase CLI for app distribution.
 
 ## Setup & Configuration
 
@@ -37,69 +32,54 @@ This project is a VR-ready Android application designed to integrate Google's Ge
 git clone https://your-repository-url-here/gemini-vr-wrapper.git
 cd gemini-vr-wrapper
 ```
-(Replace `https://your-repository-url-here/gemini-vr-wrapper.git` with the actual repository URL).
+(Replace with the actual repository URL).
 
 ### 2. API Key Configuration (`GEMINI_API_KEY`)
 
 The application requires a Gemini API key. It's sourced in the following order of priority:
 
-1.  **Environment Variable (Recommended for CI/CD, Secure):**
-    Set the `GEMINI_API_KEY` environment variable:
+1.  **Environment Variable (Recommended):**
     ```bash
     export GEMINI_API_KEY="YOUR_ACTUAL_GEMINI_API_KEY"
     ```
-    To make this persistent across terminal sessions, add it to your shell's configuration file (e.g., `~/.bashrc`, `~/.zshrc`, `~/.profile`), then source the file (e.g., `source ~/.bashrc`). You can also set it per-command: `GEMINI_API_KEY="YOUR_KEY" ./gradlew assembleDebug`.
+    Add to `~/.bashrc`, `~/.zshrc`, etc., for persistence.
 
 2.  **`gradle.properties` file:**
-    Create or edit the `MyVRApp/gradle.properties` file and add the following line:
+    In `MyVRApp/gradle.properties`:
     ```properties
     GEMINI_API_KEY=YOUR_ACTUAL_GEMINI_API_KEY
     ```
-    **Warning:** If you use this method, ensure that `MyVRApp/gradle.properties` is listed in your `.gitignore` file to prevent accidentally committing your API key.
+    **Warning:** Ensure `MyVRApp/gradle.properties` is in `.gitignore` if it contains sensitive keys.
 
 ### 3. Signing Configuration for Release Builds
 
-Release builds must be signed with a cryptographic key. The configuration for this is in `MyVRApp/app/build.gradle` and expects properties to be available.
-
-**Add your signing configuration to `MyVRApp/gradle.properties`:**
-
+In `MyVRApp/gradle.properties`:
 ```properties
-# In MyVRApp/gradle.properties
-
-# For Release APK Signing
-RELEASE_STORE_FILE=your_keystore_filename.jks # e.g., my-release-key.jks
+RELEASE_STORE_FILE=your_keystore_filename.jks
 RELEASE_STORE_PASSWORD=your_keystore_password
 RELEASE_KEY_ALIAS=your_key_alias
 RELEASE_KEY_PASSWORD=your_key_password
-
-# You can also place your GEMINI_API_KEY here if not using an environment variable
-# GEMINI_API_KEY=YOUR_ACTUAL_GEMINI_API_KEY
 ```
-
-*   Place your keystore file (e.g., `your_keystore_filename.jks`) in the `MyVRApp/app` directory or provide a relative/absolute path for `RELEASE_STORE_FILE`.
-*   Ensure `MyVRApp/gradle.properties` (or at least a version containing sensitive keys) is added to `.gitignore`.
-*   You can generate a new keystore using Android Studio (Build > Generate Signed Bundle / APK...) or the `keytool` command-line utility provided by the JDK.
+Place your keystore in `MyVRApp/app` or provide a full path. Ensure `MyVRApp/gradle.properties` is in `.gitignore`.
 
 ## Building the Application
 
-All build commands should be run from the `MyVRApp` directory.
+All build commands should be run from the `MyVRApp` directory. Scripts now use `error_handler.sh` for robust error reporting.
 
 ### 1. Debug Build (using `build_with_api_key.sh`)
 
-This script is a convenience for setting the `GEMINI_API_KEY` as an environment variable specifically for the build command.
-
+Sets `GEMINI_API_KEY` for the build command.
 ```bash
 cd MyVRApp
 ./build_with_api_key.sh YOUR_GEMINI_API_KEY
 ```
-This will produce a debug APK in `MyVRApp/app/build/outputs/apk/debug/`.
+Output: `MyVRApp/app/build/outputs/apk/debug/app-debug.apk`.
 
 ### 2. Release Build, Verification, and Testing (using `build_and_verify.sh`)
 
-This is the comprehensive script for generating a production-ready build.
 **Before running:**
-*   Ensure `GEMINI_API_KEY` is set as an environment variable or in `MyVRApp/gradle.properties`.
-*   Ensure `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` are correctly set in `MyVRApp/gradle.properties`.
+*   Set `GEMINI_API_KEY` (environment or `gradle.properties`).
+*   Set signing properties in `MyVRApp/gradle.properties`.
 
 ```bash
 cd MyVRApp
@@ -107,174 +87,172 @@ cd MyVRApp
 ```
 This script will:
 1.  Build the release APK.
-2.  Verify the APK (existence, non-zero size, valid signature).
-3.  Run all instrumentation tests.
-4.  Report overall success or indicate the point of failure.
-5.  After successful completion, prompt for and apply a Git version tag (see "Automated Version Tagging" under "Automated Release Pipeline").
-The release APK will be located at `MyVRApp/app/build/outputs/apk/release/app-release.apk`.
+2.  Verify the APK.
+3.  Run instrumentation tests.
+4.  Report success or failure (exiting on error).
+5.  After success, prompt for and apply a Git version tag (see "Automated Version Tagging").
+Output: `MyVRApp/app/build/outputs/apk/release/app-release.apk`.
 
-### 3. Manual Gradle Commands (Alternative)
+### 3. Manual Gradle Commands
 
-You can also use Gradle commands directly:
+(Ensure `GEMINI_API_KEY` and signing properties are set appropriately.)
+*   **Debug APK:** `./gradlew assembleDebug`
+*   **Release APK:** `./gradlew assembleRelease`
+*   **Instrumentation Tests:** `./gradlew connectedAndroidTest` (requires connected device/emulator)
 
-*   **Build Debug APK:**
-    (Ensure `GEMINI_API_KEY` is set via environment variable or in `gradle.properties`)
-    ```bash
-    cd MyVRApp
-    ./gradlew assembleDebug
-    ```
+## Interpreting Script Output
 
-*   **Build Release APK:**
-    (Ensure `GEMINI_API_KEY` and signing properties are set in `gradle.properties` or passed via `-P` flags)
-    ```bash
-    cd MyVRApp
-    ./gradlew assembleRelease
-    ```
-
-*   **Run Instrumentation Tests:**
-    (Requires a connected device or emulator)
-    ```bash
-    cd MyVRApp
-    ./gradlew connectedAndroidTest
-    ```
-
-## Interpreting `build_and_verify.sh` Output
-
-The `build_and_verify.sh` script provides clear messages for each stage:
-1.  Gradle build execution.
-2.  APK path definition.
-3.  APK existence check.
-4.  APK size check.
-5.  APK signing verification.
-6.  Instrumentation test execution.
-
-*   A final **"MyVRApp Release Build, Verification & Automated Tests ALL SUCCESSFUL!"** message indicates that the APK is built, verified, and core functionalities have passed automated tests.
-*   If any stage fails, the script will print an error message indicating where the failure occurred and exit with a non-zero status code.
+Scripts provide clear messages. With the new error handling:
+*   Success messages indicate completion of stages.
+*   Error messages will be prefixed with `[YYYY-MM-DD HH:MM:SS] ERROR in <script_name> at line <line_number>: <error_message>` and the script will halt.
 
 ## Automated Release Pipeline
 
-To streamline the release process, several scripts have been introduced to automate key tasks such as release notes generation, version tagging, and deployment.
-
 ### Release Notes Generation (`generate_release_notes.sh`)
 
-This script automates the creation of release notes based on Git commit history.
-
-*   **Purpose:** Generates `RELEASE_NOTES.md` by collecting commit messages since the last Git tag (or from the first commit if no tags exist). Each commit is formatted as a Markdown bullet point.
-*   **Usage:**
-    ```bash
-    cd MyVRApp
-    ./generate_release_notes.sh
-    ```
-*   **Output:** The release notes are saved to `MyVRApp/RELEASE_NOTES.md`. If no new commits are found, it will indicate that there are no changes since the last release.
+Generates `MyVRApp/RELEASE_NOTES.md` from Git commit history since the last tag.
+```bash
+cd MyVRApp
+./generate_release_notes.sh
+```
+If `MyVRApp/RELEASE_NOTES.md` exists, it will be used by `deploy_alpha.sh` for Firebase deployments.
 
 ### Automated Version Tagging (in `build_and_verify.sh`)
 
-The main build script, `build_and_verify.sh`, now incorporates an automated Git tagging step.
-
-*   **Process:** After a successful build and all automated tests pass, the script will prompt you to enter a version tag (e.g., `v1.0.0`, `v1.0.1-alpha`).
-*   **Action:** If a tag is provided, the script will:
-    1.  Create a Git tag locally (`git tag <your_tag>`).
-    2.  Push the tag to the remote repository (`git push origin <your_tag>`).
-*   **Skipping:** If you do not want to create a tag, simply press Enter without typing a tag name. The script will then skip the tagging process.
-*   **Error Handling:** If tagging or pushing fails, an error message will be displayed, but it will not cause the overall `build_and_verify.sh` script to report a failure if the build and tests themselves were successful.
+After a successful build and tests, `build_and_verify.sh` prompts for a Git version tag.
+*   **Format Requirement:** Tags must follow strict semantic versioning: `vX.Y.Z` (e.g., `v1.0.0`, `v1.2.3`). Invalid formats will cause an error and halt the script.
+*   **Pre-checks:** The script checks if the tag already exists locally or on the remote `origin`. If it exists, an error is reported, and the script halts.
+*   **Process:**
+    1.  Creates the tag locally (`git tag <tag>`).
+    2.  Pushes the tag to `origin` (`git push origin <tag>`).
+*   **Skipping:** Press Enter without a tag name to skip.
+*   **Error Handling:** Invalid format, existing tags, or failures in `git tag` or `git push` commands will now call `handle_error` and halt the script.
 
 ### Deployment Script (`deploy_alpha.sh`)
 
-The `deploy_alpha.sh` script is designed to automate the deployment of the generated APK to various distribution targets.
-
-*   **Purpose:** Provides a unified way to deploy the application APK for testing or alpha releases.
-*   **Basic Usage:**
-    ```bash
-    cd MyVRApp
-    ./deploy_alpha.sh <path_to_apk> <target_type> [options]
-    ```
-*   **Logging:** The script includes timestamped logging for all its operations.
+Automates APK deployment.
+```bash
+cd MyVRApp
+./deploy_alpha.sh <path_to_apk> <target_type> [options]
+```
+Features timestamped logging and robust error handling.
 
 #### Supported Targets:
 
 1.  **Local Deployment:**
     *   **Command:** `./deploy_alpha.sh app/build/outputs/apk/release/app-release.apk local /path/to/your/share_directory`
-    *   **Action:** Copies the APK file to the specified local directory. Useful for direct sharing or manual uploads.
+    *   **Action:** Copies APK to the specified local directory.
 
-2.  **Meta Quest Deployment (Placeholder):**
+2.  **Meta Quest Deployment:**
     *   **Command:** `./deploy_alpha.sh <path_to_apk> meta_quest <your_app_id>`
-    *   **Action:** Prepares for uploading the APK to the Meta Quest Store (Alpha channel by default) using the `ovr-platform-util`.
+    *   **Action:** Uploads the APK to the Meta Quest Store (Alpha channel by default) using `ovr-platform-util`. **This now performs an actual upload.**
     *   **Required Environment Variables:**
-        *   `OVR_APP_SECRET`: Your Meta Quest application secret.
-        *   `OVR_ACCESS_TOKEN`: Your Meta Quest user access token.
+        *   `OVR_APP_ID`: Your Meta Quest Application ID.
+        *   `OVR_APP_SECRET`: Your Meta Quest Application Secret.
+        *   `OVR_ACCESS_TOKEN`: Your Meta Quest User Access Token.
+    *   **Obtaining Credentials:**
+        *   **`OVR_APP_ID` and `OVR_APP_SECRET`:**
+            1.  Go to your Meta Quest Developer Dashboard: [https://developer.oculus.com/manage/](https://developer.oculus.com/manage/)
+            2.  Select your application.
+            3.  Navigate to the 'API' or 'App Credentials' section.
+            4.  Your App ID and App Secret will be listed there.
+        *   **`OVR_ACCESS_TOKEN`:**
+            1.  This token is typically obtained using the `ovr-platform-util` or via Meta's developer tools.
+            2.  Run `ovr-platform-util get-access-token` (or a similar command specific to your `ovr-platform-util` version) and follow the prompts. This usually involves logging into your Meta developer account.
+            3.  The token is long-lived but can expire. Store it securely.
+    *   **Environment Variable Setup Example:**
+        ```bash
+        export OVR_APP_ID="YOUR_APP_ID"
+        export OVR_APP_SECRET="YOUR_APP_SECRET"
+        export OVR_ACCESS_TOKEN="YOUR_ACCESS_TOKEN"
+        ```
+        Add these to your shell's profile (e.g., `~/.bashrc`, `~/.zshrc`) or your CI/CD system's secret management.
     *   **Optional Environment Variable:**
         *   `OVR_PLATFORM_UTIL_PATH`: Set this if `ovr-platform-util` is not in your system's `PATH`.
-    *   **Current Status:** The script currently performs a **dry run**. It will log the `ovr-platform-util` command that would be executed but will **not** perform the actual upload. This allows for command verification without live credentials during initial setup.
 
-3.  **Firebase App Distribution (Placeholder):**
+3.  **Firebase App Distribution:**
     *   **Command:** `./deploy_alpha.sh <path_to_apk> firebase`
-    *   **Action:** Prepares for distributing the APK via Firebase App Distribution.
+    *   **Action:** Distributes the APK via Firebase App Distribution. **This now performs an actual upload.** Release notes from `MyVRApp/RELEASE_NOTES.md` will be used if the file exists.
     *   **Required Environment Variables:**
         *   `FIREBASE_APP_ID`: Your Firebase Application ID.
-        *   `FIREBASE_TOKEN`: Your Firebase CLI token (especially useful for CI environments).
+    *   **Conditional Environment Variable:**
+        *   `FIREBASE_TOKEN`: Your Firebase CLI refresh token. Required for CI or non-interactive environments. For local interactive use, `firebase login` is sufficient.
+    *   **Obtaining Credentials:**
+        *   **`FIREBASE_APP_ID`:**
+            1.  Go to your Firebase Console: [https://console.firebase.google.com/](https://console.firebase.google.com/)
+            2.  Select your Firebase project.
+            3.  Click the gear icon (Project settings) next to 'Project Overview'.
+            4.  Under the 'General' tab, in the 'Your apps' card, select your specific Android application. The 'App ID' (looking like `1:1234567890:android:abcdef1234567890`) will be listed there.
+        *   **`FIREBASE_TOKEN` (for CI/non-interactive use):**
+            1.  Install Firebase CLI: `npm install -g firebase-tools` (or see official docs).
+            2.  Log in to Firebase for CI: `firebase login:ci`
+            3.  This command will print a refresh token. This is your `FIREBASE_TOKEN`. Store it securely.
+    *   **Environment Variable Setup Example:**
+        ```bash
+        export FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
+        export FIREBASE_TOKEN="YOUR_FIREBASE_CI_TOKEN" # Optional for local use if already logged in via 'firebase login'
+        ```
+        Add these to your shell's profile or CI/CD secret management.
     *   **Optional Environment Variable:**
         *   `FIREBASE_CLI_PATH`: Set this if the `firebase` CLI tool is not in your system's `PATH`.
-    *   **Current Status:** The script currently performs a **dry run**. It will log the `firebase` command that would be executed but will **not** perform the actual distribution. This allows for command verification.
 
 ## Automated Technical Tests
 
-The project includes instrumentation tests located in `MyVRApp/app/src/androidTest/java/com/example/myvrapp/CoreFunctionalityTest.kt`. These tests validate core components of the application:
-
-*   `testSpeechRecognizer_Initialization`: Checks that Android's `SpeechRecognizer` service is available and can be instantiated.
-*   `testTextToSpeech_Initialization`: Verifies that the `TextToSpeech` engine initializes correctly and can process a simple speech request.
-*   `testGeminiApiClient_InitializationAndDummyCall`: Ensures the Gemini `GenerativeModel` client can be initialized with the provided API key and attempts a basic API call.
-*   `testUIElements_Existence`: Checks if `MainActivity` can be launched and if the essential UI elements (`R.id.textView` and `R.id.scrollView`) are present in its layout. This test relies on `MainActivity.kt` and its layout (`R.layout.activity_main`) being correctly configured.
-
-These tests are run automatically by the `build_and_verify.sh` script or can be triggered manually:
+Located in `MyVRApp/app/src/androidTest/java/com/example/myvrapp/CoreFunctionalityTest.kt`.
+Tests validate: Speech Recognizer, TextToSpeech engine, Gemini API client, and core UI elements.
+Run via `build_and_verify.sh` or manually:
 ```bash
 cd MyVRApp
 ./gradlew connectedAndroidTest
 ```
 
 ## Project Structure
-
+(Project structure diagram remains largely the same, ensure `error_handler.sh`, `generate_release_notes.sh`, `deploy_alpha.sh` are listed if not already)
 ```
 MyVRApp/
-├── app/                     # Main application module
-│   ├── build.gradle         # App-level Gradle build script
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/example/myvrapp/
-│   │   │   │   └── MainActivity.kt  # Main Android Activity
-│   │   │   ├── res/                 # Application resources (layouts, values, etc.)
-│   │   │   │   ├── layout/activity_main.xml
-│   │   │   │   └── values/ids.xml
-│   │   │   └── AndroidManifest.xml
-│   │   └── androidTest/       # Instrumentation tests
-│   │       └── java/com/example/myvrapp/
-│   │           └── CoreFunctionalityTest.kt
-│   └── keystore.properties.example # Example for signing config (actual should be gitignored)
-├── build.gradle             # Project-level Gradle build script
-├── gradle.properties        # Project-wide Gradle settings (API key, signing info)
-├── gradlew                  # Gradle wrapper executable (Linux/macOS)
-├── gradlew.bat              # Gradle wrapper executable (Windows)
-├── settings.gradle          # Gradle settings
-├── build_with_api_key.sh    # Script to build debug APK with API key as argument
-└── build_and_verify.sh      # Script to build, verify, and test the release APK
-└── README.md                # This file
+├── app/
+│   ├── ... (main app content)
+├── build.gradle
+├── gradle.properties
+├── gradlew
+├── gradlew.bat
+├── settings.gradle
+├── error_handler.sh         # Common error handling script
+├── build_with_api_key.sh
+├── build_and_verify.sh
+├── generate_release_notes.sh
+├── deploy_alpha.sh
+├── RELEASE_NOTES.md         # Generated release notes
+└── README.md
 ```
 
 ## Troubleshooting
 
+*   **Enhanced Error Reporting:**
+    The build and deployment scripts (`build_and_verify.sh`, `deploy_alpha.sh`, etc.) now use a common error handler. If a step fails, you will see a detailed, timestamped error message in the format:
+    `[YYYY-MM-DD HH:MM:SS] ERROR in <script_name> at line <line_number>: <error_message>`
+    The script will exit immediately upon such an error, preventing further execution.
+
 *   **Build fails due to missing API key:**
-    Ensure `GEMINI_API_KEY` is correctly set as an environment variable or in `MyVRApp/gradle.properties`. Remember the priority: Environment Variable > `gradle.properties`.
+    Ensure `GEMINI_API_KEY` is correctly set (Environment Variable > `gradle.properties`).
 
 *   **Release build fails (signing issues):**
-    *   Verify that `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` are correctly defined in `MyVRApp/gradle.properties`.
-    *   Ensure the keystore file specified by `RELEASE_STORE_FILE` exists at the given path and is accessible.
-    *   Double-check that the passwords and alias are correct.
+    Verify signing properties in `MyVRApp/gradle.properties` and keystore file path/access.
 
-*   **`apksigner` not found (during `build_and_verify.sh`):**
-    *   Make sure your Android SDK's `build-tools` directory (e.g., `/path/to/android_sdk/build-tools/<version>/`) is added to your system's PATH.
-    *   Alternatively, ensure the `ANDROID_HOME` or `ANDROID_SDK_ROOT` environment variable is set, as the script attempts to locate `apksigner` through these paths.
+*   **`apksigner` not found:**
+    Ensure Android SDK `build-tools` directory is in PATH, or `ANDROID_HOME`/`ANDROID_SDK_ROOT` is set.
 
-*   **Instrumentation tests fail (`connectedAndroidTest` or via `build_and_verify.sh`):**
-    *   Ensure you have an Android device or emulator connected and visible via `adb devices`.
-    *   `testUIElements_Existence` specifically might fail if `MainActivity.kt` is not correctly set up, not declared in `AndroidManifest.xml`, or if its layout (`activity_main.xml`) does not contain the expected views (`R.id.textView`, `R.id.scrollView`).
-    *   Check Logcat output in Android Studio or via `adb logcat` for more detailed error messages from the tests or application.
+*   **Instrumentation tests fail:**
+    Check for connected device/emulator (`adb devices`). Review Logcat for detailed errors. `testUIElements_Existence` depends on `MainActivity.kt` and `activity_main.xml` configuration.
+
+*   **Deployment Failures (Meta Quest or Firebase):**
+    *   **Authentication:** Double-check that `OVR_APP_ID`, `OVR_APP_SECRET`, `OVR_ACCESS_TOKEN` (for Meta Quest) or `FIREBASE_APP_ID`, `FIREBASE_TOKEN` (for Firebase CI) are correctly set as environment variables and are valid.
+    *   **Tool Paths:** If `ovr-platform-util` or `firebase` CLI are not in your default PATH, ensure you've set `OVR_PLATFORM_UTIL_PATH` or `FIREBASE_CLI_PATH` environment variables respectively.
+    *   **Network Issues:** Live deployments require internet access. Check your connection.
+    *   **Tool-Specific Errors:** Pay close attention to any error messages output directly by `ovr-platform-util` or `firebase` CLI, as these often provide specific reasons for failure (e.g., invalid app ID, insufficient permissions, quota exceeded).
+
+*   **Tagging Failures (`build_and_verify.sh`):**
+    *   **Invalid Format:** Ensure tags are `vX.Y.Z` (e.g., `v1.0.1`).
+    *   **Existing Tag:** The script will fail if the tag already exists locally or on `origin`. Choose a unique tag name.
+    *   **Git Errors:** Ensure `git` commands can be executed (e.g., you are in a git repository, credentials for pushing to remote are set up if applicable).
 ```
