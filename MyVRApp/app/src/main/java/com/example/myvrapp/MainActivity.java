@@ -1,6 +1,7 @@
 // MainActivity.java
 package com.example.myvrapp; // Ensure this matches your project's package name
 
+import com.example.myvrapp.BuildConfig;
 import android.content.Intent;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -30,10 +31,11 @@ public class MainActivity extends Activity {
     private Intent speechRecognizerIntent;
     private TextToSpeech textToSpeech;
 
-    // TODO: Replace with your actual Gemini API Key
+    private static final String TAG = "MainActivityVR"; // Or any other suitable tag
+
     // IMPORTANT: In a production app, you should fetch this securely (e.g., from a backend server)
     // and not hardcode it directly in your client-side code.
-    private static final String GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
 
     private GenerativeModelFutures model;
     private ExecutorService executorService;
@@ -46,15 +48,27 @@ public class MainActivity extends Activity {
         textView = findViewById(R.id.textView);
         speakButton = findViewById(R.id.speakButton);
 
+    // Log API Key status
+    if (GEMINI_API_KEY == null || GEMINI_API_KEY.equals("YOUR_API_KEY_HERE") || GEMINI_API_KEY.isEmpty() || GEMINI_API_KEY.equals("DEFAULT_NO_API_KEY")) { // Added DEFAULT_NO_API_KEY
+        android.util.Log.e(TAG, "API Key not loaded or placeholder detected. Please ensure GEMINI_API_KEY is set in gradle.properties.");
+        textView.setText("ERROR: Gemini API Key not configured.");
+        // Potentially disable API calling features or inform user
+    } else {
+        android.util.Log.i(TAG, "Gemini API Key loaded successfully.");
+        // Avoid logging the actual key: android.util.Log.d(TAG, "API Key: " + GEMINI_API_KEY); // Potentially sensitive
+    }
+
         executorService = Executors.newSingleThreadExecutor();
 
         // Initialize Gemini Model
         try {
             GenerativeModel baseModel = new GenerativeModel("gemini-pro", GEMINI_API_KEY);
             model = GenerativeModelFutures.from(baseModel);
+        android.util.Log.i(TAG, "GenerativeModel initialized successfully.");
         } catch (Exception e) {
+        android.util.Log.e(TAG, "Error initializing Gemini Model: " + e.getMessage(), e);
             textView.setText("Error initializing Gemini Model: " + e.getMessage());
-            e.printStackTrace();
+        // e.printStackTrace(); // Logcat will show this via android.util.Log.e
         }
 
         // Initialize TextToSpeech
@@ -123,6 +137,7 @@ public class MainActivity extends Activity {
 
     // Method to call Gemini API
     private void callGeminiAPI(String prompt) {
+        android.util.Log.i(TAG, "Attempting to call Gemini API with prompt: '" + prompt + "'");
         if (model == null) {
             textView.setText("Gemini model not initialized.");
             speak("Gemini service is not ready. Please check the API key.");
@@ -136,11 +151,13 @@ public class MainActivity extends Activity {
         Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
             @Override
             public void onSuccess(GenerateContentResponse result) {
-                String geminiResponse = result.getText();
-                if (geminiResponse != null && !geminiResponse.isEmpty()) {
-                    runOnUiThread(() -> textView.setText("Gemini: " + geminiResponse));
-                    speak(geminiResponse);
+                String geminiResponseText = result.getText(); // Use this variable
+                android.util.Log.i(TAG, "Gemini API call successful. Prompt: '" + prompt + "'. Response: '" + geminiResponseText + "'");
+                if (geminiResponseText != null && !geminiResponseText.isEmpty()) {
+                    runOnUiThread(() -> textView.setText("Gemini: " + geminiResponseText));
+                    speak(geminiResponseText);
                 } else {
+                    android.util.Log.w(TAG, "Gemini API call successful but response was null or empty.");
                     runOnUiThread(() -> textView.setText("Gemini: No response."));
                     speak("I'm sorry, I couldn't get a response from Gemini.");
                 }
@@ -148,11 +165,12 @@ public class MainActivity extends Activity {
 
             @Override
             public void onFailure(Throwable t) {
+                android.util.Log.e(TAG, "Gemini API call failed. Prompt: '" + prompt + "'. Error: " + t.getMessage(), t);
                 runOnUiThread(() -> {
                     textView.setText("Gemini Error: " + t.getMessage());
                     speak("There was an error communicating with Gemini. Please try again.");
                 });
-                t.printStackTrace();
+                // t.printStackTrace(); // Logcat will show this via android.util.Log.e
             }
         }, executorService);
     }

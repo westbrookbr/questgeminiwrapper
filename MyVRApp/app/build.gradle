@@ -15,12 +15,27 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"" // Default placeholder
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(project.properties.get("RELEASE_STORE_FILE", "DEFAULT_NO_KEYSTORE_FILE_PATH"))
+            storePassword project.properties.get("RELEASE_STORE_PASSWORD", "DEFAULT_NO_PASSWORD")
+            keyAlias project.properties.get("RELEASE_KEY_ALIAS", "DEFAULT_NO_ALIAS")
+            keyPassword project.properties.get("RELEASE_KEY_PASSWORD", "DEFAULT_NO_PASSWORD")
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+            buildConfigField "String", "GEMINI_API_KEY", project.properties.get("GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"")
+        }
+        debug {
+            buildConfigField "String", "GEMINI_API_KEY", project.properties.get("GEMINI_API_KEY", "\"YOUR_API_KEY_HERE\"")
         }
     }
     compileOptions {
@@ -31,10 +46,26 @@ android {
         jvmTarget = '1.8'
     }
     buildFeatures {
+        buildConfig true
         // No view binding or data binding for a "No Activity" project initially
         // viewBinding true
         // dataBinding true
         // For VR, we might need to enable manifest merging for VR features if not handled by OVR plugins
+    }
+
+    // Log build type and signing status
+    project.afterEvaluate {
+        android.applicationVariants.all { variant ->
+            println "Building variant: ${variant.name}"
+            if (variant.buildType.name == "release" && variant.signingConfig) {
+                println "Signing for release build is configured with: ${variant.signingConfig.name}"
+                if (variant.signingConfig.storeFile == null || !variant.signingConfig.storeFile.exists()) {
+                    project.logger.warn("WARN: Release keystore file not found at: ${variant.signingConfig.storeFile}. Ensure RELEASE_STORE_FILE is set correctly in gradle.properties.")
+                }
+            } else if (variant.buildType.name == "release") {
+                project.logger.error("ERROR: Release build type is not configured for signing. APK will be unsigned.")
+            }
+        }
     }
 }
 
