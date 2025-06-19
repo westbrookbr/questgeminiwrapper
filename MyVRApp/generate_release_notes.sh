@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source the error handler
+source MyVRApp/error_handler.sh || { echo "Failed to source error_handler.sh"; exit 1; }
+
 OUTPUT_FILE="MyVRApp/RELEASE_NOTES.md"
 
 # Get the latest tag

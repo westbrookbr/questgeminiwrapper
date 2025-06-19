@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source the error handler
+source MyVRApp/error_handler.sh || { echo "Failed to source error_handler.sh"; exit 1; }
+
 # Script to build a release APK for MyVRApp, verify it, and prepare for testing.
 
 echo "Starting MyVRApp release build process..."
@@ -10,8 +13,7 @@ echo "Starting MyVRApp release build process..."
 BUILD_STATUS=$?
 
 if [ $BUILD_STATUS -ne 0 ]; then
-    echo "Gradle build failed with status: $BUILD_STATUS"
-    exit 1
+    handle_error "$0" "$LINENO" "Gradle build failed with status: $BUILD_STATUS"
 fi
 
 echo "Gradle build successful."
@@ -23,15 +25,13 @@ echo "Expected APK path: $APK_PATH"
 # 3. Verify APK
 # 3a. Check existence
 if [ ! -f "$APK_PATH" ]; then
-    echo "Build Verification FAILED: APK not found at $APK_PATH"
-    exit 1
+    handle_error "$0" "$LINENO" "Build Verification FAILED: APK not found at $APK_PATH"
 fi
 echo "APK Existence Check: PASSED"
 
 # 3b. Check non-zero size
 if [ ! -s "$APK_PATH" ]; then
-    echo "Build Verification FAILED: APK is zero size."
-    exit 1
+    handle_error "$0" "$LINENO" "Build Verification FAILED: APK is zero size."
 fi
 echo "APK Size Check: PASSED"
 
@@ -60,11 +60,10 @@ $APKSIGNER_CMD verify "$APK_PATH"
 SIGN_STATUS=$?
 
 if [ $SIGN_STATUS -ne 0 ]; then
-    echo "Build Verification FAILED: APK signing verification failed for $APK_PATH."
+    # Attempt to get more detailed output from apksigner before calling handle_error
     echo "Command used: '$APKSIGNER_CMD verify \"$APK_PATH\"'"
-    # Attempt to get more detailed output from apksigner
-    $APKSIGNER_CMD verify -v "$APK_PATH"
-    exit 1
+    $APKSIGNER_CMD verify -v "$APK_PATH" >&2 # Send verbose output to stderr
+    handle_error "$0" "$LINENO" "Build Verification FAILED: APK signing verification failed for $APK_PATH."
 fi
 echo "APK Signing Check: PASSED"
 
@@ -81,11 +80,13 @@ echo "Starting Instrumentation Tests..."
 TEST_STATUS=$?
 
 if [ $TEST_STATUS -ne 0 ]; then
-    echo "Instrumentation Tests FAILED with status: $TEST_STATUS"
-    echo "----------------------------------------"
-    echo "MyVRApp Build & Verification SUCCESSFUL, but Automated Tests FAILED."
-    echo "----------------------------------------"
-    exit $TEST_STATUS # Exit with the test status
+    # Not using handle_error here as we want to exit with the specific TEST_STATUS
+    # and the script has a specific message for this case.
+    echo "Instrumentation Tests FAILED with status: $TEST_STATUS" >&2
+    echo "----------------------------------------" >&2
+    echo "MyVRApp Build & Verification SUCCESSFUL, but Automated Tests FAILED." >&2
+    echo "----------------------------------------" >&2
+    exit $TEST_STATUS
 else
     echo "Instrumentation Tests PASSED."
     echo "----------------------------------------"
@@ -101,33 +102,48 @@ else
     if [ -z "$TAG_NAME" ]; then
         echo "Skipping tag creation."
     else
-        # Basic validation: starts with 'v', then numbers and dots.
-        if [[ "$TAG_NAME" =~ ^v[0-9]+(\.[0-9]+)*$ ]]; then
-            echo "Attempting to create tag: $TAG_NAME"
-            git tag "$TAG_NAME"
-            TAG_CREATE_STATUS=$?
-
-            if [ $TAG_CREATE_STATUS -ne 0 ]; then
-                echo "Error: Failed to create Git tag '$TAG_NAME'. Please do it manually."
-            else
-                echo "Successfully tagged version $TAG_NAME."
-                echo "Attempting to push tag $TAG_NAME to remote repository..."
-                git push origin "$TAG_NAME"
-                TAG_PUSH_STATUS=$?
-
-                if [ $TAG_PUSH_STATUS -ne 0 ]; then
-                    echo "Error: Failed to push Git tag '$TAG_NAME' to remote. Please do it manually."
-                else
-                    echo "Successfully pushed tag $TAG_NAME to remote repository."
-                fi
-            fi
-        else
-            echo "Error: Invalid tag format '$TAG_NAME'. Tag must start with 'v' followed by numbers and dots (e.g., v1.0.0)."
-            echo "Skipping tag creation."
+        # Strict Semantic Versioning Check: vX.Y.Z
+        if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            handle_error "$0" "$LINENO" "Invalid tag format '$TAG_NAME'. Tag must be vX.Y.Z (e.g., v1.0.0)."
         fi
+        echo "Tag format validated: $TAG_NAME"
+
+        # Check for existing local tag
+        if git tag -l "$TAG_NAME" | grep -q "$TAG_NAME"; then
+            handle_error "$0" "$LINENO" "Tag '$TAG_NAME' already exists locally."
+        fi
+        echo "Tag '$TAG_NAME' does not exist locally."
+
+        # Check for existing remote tag
+        # Note: git ls-remote exits with 0 if remote tag exists, 2 if it doesn't (or other error)
+        # We are interested if it *finds* the tag.
+        if git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "refs/tags/$TAG_NAME"; then
+            handle_error "$0" "$LINENO" "Tag '$TAG_NAME' already exists remotely on origin."
+        fi
+        echo "Tag '$TAG_NAME' does not exist remotely on origin."
+
+        echo "Attempting to create tag: $TAG_NAME"
+        git tag "$TAG_NAME"
+        TAG_CREATE_STATUS=$?
+
+        if [ $TAG_CREATE_STATUS -ne 0 ]; then
+            handle_error "$0" "$LINENO" "Failed to create Git tag '$TAG_NAME'. 'git tag' command failed with status $TAG_CREATE_STATUS."
+        fi
+        echo "Successfully tagged version $TAG_NAME locally."
+
+        echo "Attempting to push tag $TAG_NAME to remote repository origin..."
+        git push origin "$TAG_NAME"
+        TAG_PUSH_STATUS=$?
+
+        if [ $TAG_PUSH_STATUS -ne 0 ]; then
+            # It might be useful to try and delete the local tag if push fails, to allow a retry of the script.
+            # However, for now, just report the error.
+            handle_error "$0" "$LINENO" "Failed to push Git tag '$TAG_NAME' to remote 'origin'. 'git push' command failed with status $TAG_PUSH_STATUS."
+        fi
+        echo "Successfully pushed tag $TAG_NAME to remote repository origin."
     fi
     echo "----------------------------------------"
     # <<< END NEW TAGGING LOGIC HERE >>>
 fi
 
-exit 0 # Success if tests passed (or rather, the script exits with TEST_STATUS if failed)
+exit 0 # Success if tests passed
