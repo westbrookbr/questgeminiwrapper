@@ -1,0 +1,26 @@
+# Gradle files
+gradle.properties
+*.local
+.gradle/
+build/
+
+# IDE files (Android Studio, IntelliJ)
+.idea/
+*.iml
+*.ipr
+*.iws
+local.properties
+
+# Keystore files (though typically not placed directly in project source, good to ignore)
+*.jks
+*.keystore
+
+# Environment files
+.env
+
+# Log files
+*.log
+
+# Captures and output
+captures/
+output/
